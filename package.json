@@ -1,0 +1,26 @@
+{
+  "name": "exchange-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "compile": "solcjs --abi --include-path node_modules/ --base-path . abi/Contract.sol --output-dir abi"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.0.1",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.0.1",
+    "expres": "^0.0.5",
+    "express": "^4.18.1",
+    "express-flash": "^0.0.2",
+    "express-openid-connect": "^2.7.3",
+    "express-session": "^1.17.3",
+    "passport": "^0.6.0",
+    "passport-local": "^1.0.0",
+    "postgres": "^3.2.4",
+    "web3": "^1.7.4"
+  }
+}
