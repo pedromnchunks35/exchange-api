@@ -14,11 +14,13 @@ var passport = require('passport');
 /* IMPORT ROUTES */
 const user_route = require('./routes/user');
 const trans_route = require('./routes/transaction');
+const assets_route = require('./routes/assets');
+const market_route = require('./routes/market');
 const { urlencoded } = require('express');
 /* USE JSON */
 app.use(express.json());
 /* UNRLENCODED */
-app.use(express.urlencoded({ extended: false }));
+app.use(urlencoded({ extended: false }));
 /* USE COOKIES */
 app.use(cookieParser());
 /* SESSION */
@@ -33,6 +35,8 @@ app.use(passport.authenticate('session'));
 /* USE ROUTES */
 app.use(user_route);
 app.use(trans_route);
+app.use(assets_route);
+app.use(market_route);
 
 
 /* MAKE THE APP LISTEN IN SOME PORT */

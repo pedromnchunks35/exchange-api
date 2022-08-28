@@ -89,6 +89,7 @@ ${data.username})`
 res.status(200).json({"Sucess":"Inserted Sucessfully"});
 /* IN CASE OF ERROR */
 } catch (error) {
+    console.log(error);
 res.status(500).json({"error":"Something went wrong"});
 }
 }

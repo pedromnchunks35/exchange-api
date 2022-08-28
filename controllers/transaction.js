@@ -7,10 +7,10 @@ const web3 = new Web3('https://data-seed-prebsc-1-s1.binance.org:8545');
 
 /* GET THE ENV VARIABLES */
 require('dotenv').config();
-
 /* ================================================================================================================================== */
 /* DATA GETTERS / STATE CHANGES */
 /* ================================================================================================================================== */
+// TRANSFER FUNCTION APPROVING THE TOKENS
 const transfer = (req,res) =>{
 /* BODY GET */
 const data = req.body;
@@ -147,20 +147,20 @@ res.status(200).json({Msg: "Sucess",ReceiptTransfer: receiptTransfer, ReceiptFee
 })
 /* SENDING THE APPROVAL TRANSACTION ERROR */
 .catch(err=>{
-  console.log(err);
+  
   res.status(500).json({Msg: "Error sending the approval transaction"});
 })
 })
 /* SIGNING APPROVAL TRANSACTION ERROR HANDLING */
 .catch(err=>{
-  console.log(err);
+  
   res.status(500).json({Msg: "Error while signing the Approval transaction"});
 })
 
 })
 /* QUERY PRIVATE KEY OF THE DATA.TO ERROR HANDLING */
 .catch(errorQAPP=>{
-  console.log(errorQAPP);
+  
 res.status(500).json({Msg: "Error while querying the private key of the given address"});
 })
 
@@ -172,7 +172,7 @@ res.status(500).json({Msg: "Error while querying the private key of the given ad
 })
 /* SIGN THE FEE ERROR HANDLING */
 .catch(err=>{
-  console.log(err);
+  
   res.status(500).json({Msg: "Error signing the fee transaction"});
 })
 
@@ -192,13 +192,13 @@ res.status(500).json({Msg: "Error while querying the private key of the given ad
 
   /* FEE ESTIMATING ERROR HANDLING */
   .catch(feeErr=>{
-    console.log(feeErr);
+    
   res.status(500).json({Msg: "Error estimating the fee to make the transaction"});
   })
   })
   /* APPROVAL GAS ERROR HANDLING */
   .catch(approvalGasErr=>{
-    console.log(approvalGasErr)
+    
   res.status(500).json({Msg: "Error estimating the Gas for the transfer of the transaction"});
   })
   })
@@ -264,7 +264,7 @@ res.status(500).json({message: "Error making the transaction sign"});
 })
 /* GRAB THE ERROR OF THE QUERY */
 .catch((err)=>{
-  console.log(err);
+  
 /* CASE THE QUERY TRHOWS AN ERROR */
 res.status(500).json({message: "Internal Server Error"});
 }) 
@@ -274,5 +274,154 @@ res.status(400).json({message: "Please login first"});
 }
 
 }
+
+
+
+
+
+
+
+//FUNCTION TO TRANSFER WITH CEFI TOKENS
+const transferCefi = async (req,res) =>{
+//REQUEST THE BODY
+data = req.body;
+//SESSION VERIFICATION
+if(req.session.passport){
+if(data.contract){
+if(data.contract==process.env.CONTRACT){
+/* CONTRACT FUNCTION PROVIDER */
+const instance=require('../abi/contract')(web3,data.contract);
+//BALANCE OF TOKENS
+const balance = await instance.methods.balanceOf(req.session.passport.user.public_address).call();
+//CHECK IF THERES ENOUGHT BALANCE IN THE ACCOUNT
+if(balance>=data.value*1000){
+//CHECK THE GAS PRICE
+web3.eth.getGasPrice()
+//RESULT FROM GAS PRICE
+.then(gasP=>{
+  //AN TRANSACTION OBJ TO ESTIMATE THE GAS LIMIT
+  TxObj = {
+    from: process.env.MAIN,
+    to: data.contract,
+    data: instance.methods.transfer(data.to,data.value*1000).encodeABI(),
+    gasPrice: gasP
+  }
+  //ESTIMATE THE GAS
+  web3.eth.estimateGas(TxObj)
+  //RESULT
+  .then(GasLimit=>{
+  
+  
+  //OBJECT TO SEND THE ENOUGHT VALUE FOR THE ACCOUNT TO TRANSFER THEIR TOKENS
+  TxObj2 = {
+    from: process.env.MAIN,
+    to: req.session.passport.user.public_address,
+    gasPrice: gasP,
+    value: 0.04 * Math.pow(10,18)
+  }
+  //ESTIMATE THE GAS FOR THE SECOUND TRANSACTION
+  web3.eth.estimateGas(TxObj2)
+  //RESULT
+  .then(async GasLimit2=>{
+  //SETTING THE GAS LIMIT
+  TxObj2.gas = GasLimit2;
+  /* GET THE CURRENT BALANCE OF THE ACCOUNT WE ARE SENDING THE FUNDS WHICH IS THE RESIDUE */
+  var residue = await web3.eth.getBalance(req.session.passport.user.public_address);
+  /* UPDATING THE VALUE OF THE OPERATION */ 
+  TxObj2.value= (parseFloat(GasLimit)*parseFloat(gasP))-parseFloat(residue);
+  //SIGNING THE TRANSACTION
+  web3.eth.accounts.signTransaction(TxObj2,process.env.MAIN_PRIV)
+  //RESULT
+  .then(signedDoc2=>{
+  //MAKE THE TRANSACTION HAPPEN
+  web3.eth.sendSignedTransaction(signedDoc2.rawTransaction)
+  .then(receiptObj2=>{
+  //GETTING THE PRIVATE KEY
+  sql`SELECT private_key FROM account WHERE public_address=${req.session.passport.user.public_address}`
+  //THE RESULT
+  .then(result=>{
+//ADDING THE GAS LIMIT
+  TxObj.gas=GasLimit;
+  //ESTABLISH THE FROM
+  TxObj.from=req.session.passport.user.public_address;
+  //SIGN THE TRANSACTION
+  web3.eth.accounts.signTransaction(TxObj,result[0].private_key)
+  //RESULT
+  .then(signedDoc=>{
+  // SEND TRANSACTION
+  web3.eth.sendSignedTransaction(signedDoc.rawTransaction)
+  //RESULT
+  .then(receiptObj1=>{
+    //THE SUCESS MESSAGE
+  res.status(200).json({msg: "Sucess",receipt: receiptObj1,receipt2: receiptObj2});
+  })
+  //ERROR SENDING THE FIRST OBJ
+  .catch(err=>{
+    
+    res.status(500).json({msg: "Error sending the first obj"});
+  })
+  
+  })
+  //ERROR SIGNING THE FIRST OBJ
+  .catch(err=>{
+    
+    res.status(500).json({msg: "Error signing the first obj"});
+  })
+  })  
+  
+
+  })
+  //ERROR SENDING SECOUND OBJ
+  .catch(err=>{
+    res.status(500).json({msg: "Error sending secound obj"});
+  })
+
+
+
+  })
+
+  //ERROR SIGNING THE DOCUMENT 2
+  .catch(err=>{
+   
+    res.status(500).json({msg: "Error signing the secound obj"});
+
+  })
+    
+
+  })
+
+  //ERROR FOR ESTIMATING GAS FOR THE OBJ2
+  .catch(err=>{
+    
+    res.status(500).json({msg: "Error estimating the gas needed for the secound obj"});
+  })
+
+  })
+  //ERROR FOR GAS LIMIT
+  .catch(err=>{
+    res.status(500).json({msg: "Error estimating the gas needed"});
+  })
+
+
+
+// GAS ERROR
+}).catch(err=>{
+  res.status(500).json({msg:"Error estimating gas price"});
+})
+//ERROR IN CASE NO BALANCE
+}else{
+  res.status(400).json({msg:"Not enought tokens to pursue this operation"});
+}
+
+}
+}
+}
+
+}
+
+
+
+
+
 /* EXPORT IT */
-module.exports = {transfer};
+module.exports = {transfer,transferCefi};
