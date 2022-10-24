@@ -3,7 +3,7 @@ const express = require('express');
 /* GET THE Router */
 const router = express.Router();
 /* GET CONTROLLER */
-const {getUser,insertUser,logout} = require("../controllers/user.js");
+const {getUser,insertUser,logout,sucess,error,authentication} = require("../controllers/user.js");
 /* passport */
 const passport = require("passport");
 /* INIT THE PASSPORT , BASICLY INVOKE THE FUNCTION THAT INITS THE PASSPORT LOCAL STRATEGY */
@@ -16,6 +16,10 @@ require('../auth/passport')();
 router.get('/user',getUser);
 /* LOGOUT */
 router.get('/logout',logout);
+// SUCESS LOGIN MESSAGE
+router.get('/sucess',sucess);
+// ERROR LOGIN MESSAGE
+router.get('/error',error);
 
 /* ============================================================ */
 
@@ -33,11 +37,13 @@ router.post('/login',passport.authenticate('local',{
     /* CASE OF SUCESS */
 successReturnToOrRedirect: '/sucess',
     /* CASE OF FAILURE */
-failureRedirect: '/user',
+failureRedirect: '/error',
     /* FAILURE MSG */
 failureMessage: true
 }));
 
+// ROUTE FOR AUTHENTICATION
+router.post('/authenticate',authentication);
 /* ============================================================ */
 
 

@@ -8,13 +8,68 @@ const bcrypt = require('bcrypt');
 const web3 = new Web3('https://data-seed-prebsc-1-s1.binance.org:8545');
 /* DOTENV */
 require('dotenv').config();
-
-
-
+//JSON WEB TOKENS
+const jwt = require('jsonwebtoken');
 
 /* ================================================================================================================================== */
 /* DATA GETTERS / STATE CHANGES */
 /* ================================================================================================================================== */
+//AUTHENTICATION FUNCTION FOR MOBILE APPS
+const authentication = (req,res) => {
+    //REQUEST DATA TO THE BODY
+    data = req.body;
+    //MAKE THE QUERY
+    sql`SELECT password,salt FROM account WHERE username = ${data.username}`.then( async result=>{
+    //CASE USER EXISTS
+    if(result[0]!=undefined){
+        //IF THERES PASSWORD
+        if(data.password){
+            //GIVEN PASSWORD
+            passdata = await  bcrypt.hash(data.password,result[0].salt);
+            //IF PASSWORD MATCHES
+            if(passdata===result[0].password){
+            // SIGN AN TOKEN
+            const token=jwt.sign({username:data.username},process.env.TOKEN,{expiresIn: '1h'});
+            //RESPONSE
+            res.status(200).json({msg:'You logged in sucessfully',user:true,token:token});
+            }
+            //IF PASSWORD DOESNT MATCH
+            else{
+            res.status(400).json({msg:'Given password doesnt match',user:false});
+            }
+    //CASE IS MISSING THE PASSWORD
+    }else{
+    res.status(400).json({msg:'You need to provide an password',user:false});
+    }
+    //CASE USER DOESNT EXIST
+    }else{
+    res.status(400).json({msg: 'User doesnt exist',user: false});
+    }
+    })
+
+
+}
+
+//SUCESS FUNCTION
+const sucess = (req,res) =>{
+    if(req.session.passport){
+    res.status(200).json({msg:"Login maded sucessfully"});
+    }else{
+        //CASE THERES NO SESSION SET
+        res.status(400).json({msg:"Login first",content: req.session.passport});
+    }
+}
+//ERROR FUNCTION
+const error = (req,res) =>{
+    if(req.session.passport){
+    res.status(400).json({msg:"The credentials are wrong"});
+    }else{
+        //CASE THERES NO SESSION SET
+        res.status(400).json({msg:"Login first"});
+    }
+}
+
+
 /* GET USER */
 const getUser = (req,res) =>{
 /* SESSION VERIFYING */
@@ -95,4 +150,4 @@ res.status(500).json({"error":"Something went wrong"});
 }
 /* ================================================================================================================================== */
 
-module.exports = {getUser,insertUser,logout};
+module.exports = {getUser,insertUser,logout,sucess,error,authentication};

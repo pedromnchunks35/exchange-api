@@ -16,6 +16,8 @@ const user_route = require('./routes/user');
 const trans_route = require('./routes/transaction');
 const assets_route = require('./routes/assets');
 const market_route = require('./routes/market');
+const nft_route = require('./routes/nft');
+const nft_market=require('./routes/nftMarket');
 const { urlencoded } = require('express');
 /* USE JSON */
 app.use(express.json());
@@ -37,7 +39,8 @@ app.use(user_route);
 app.use(trans_route);
 app.use(assets_route);
 app.use(market_route);
-
+app.use(nft_route);
+app.use(nft_market);
 
 /* MAKE THE APP LISTEN IN SOME PORT */
 app.listen(process.env.PORT,()=>{
