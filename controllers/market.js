@@ -49,22 +49,13 @@ sql`SELECT * FROM account WHERE username=${user.username}`
 //USER DATA
 .then(async(user)=>{
 //CHECKOUT IF THERES AN TOKEN/NFT
-if(req.body && req.body.contract_sell && req.body.contract_pay && req.body.type && req.body.quantity && req.body.price &&req.body.id){
+if(req.body){
 
     //CHECKING IF IT IS NFT OR TOKEN
     if(req.body.type==="token"){
     
     //CONTRACT THAT WE WANT TO SELL
     var contract_sell = require('../abi/contract')(web3,req.body.contract_sell);
-    
-    //MAKING AN CALL TO THE CONTRACT SELL TO CHECK THE BALANCE OF THE USER
-    var balance = (await contract_sell.methods.balanceOf(user.public_address).call()).toNumber();
-    
-    //CHECKOUT IF THERES ENOUGH BALANCE FOR THE USER TO PUT SELLING
-    if(req.body.quantity>balance){
-        //RESPONSE
-        req.status(400).json({msg: "Not enough balance"});
-    }
     
     //ASSIGN VARS
     contract_pay = req.body.contract_pay;
@@ -84,11 +75,6 @@ if(req.body && req.body.contract_sell && req.body.contract_pay && req.body.type 
 
     //MAKING AN CALL TO THE CONTRACT SELL TO CHECK THE BALANCE OF THE USER
     var balance = (await contract_sell.methods.balanceOf(user[0].public_address).call());
-    //CHECKOUT IF THERES ENOUGH BALANCE FOR THE USER TO PUT SELLING
-    if(req.body.quantity>balance){
-        //RESPONSE
-        res.status(400).json({msg: "Not enough balance"});
-    }
     
     //ASSIGN VARS
     contract_pay = req.body.contract_pay;
@@ -98,9 +84,7 @@ if(req.body && req.body.contract_sell && req.body.contract_pay && req.body.type 
     type = req.body.type;
     
     price = req.body.price;
-    
-    }
-
+}
     //CASE THERES NO SUCH PARAMETERS LETS THROW AN ERROR
     }else{
     //RESPONSE
@@ -115,7 +99,10 @@ web3.eth.getGasPrice()
 
 //GET CONTRACT ADDRESS FROM NFTMARKET
 var market = require('../abi/NftMarket')(web3);
-
+//INITIALIZE
+var approve_obj;
+var market_obj;
+if(req.body.type=="nft"){
 //APPROVE OBJ
 approve_obj=
 {
@@ -133,6 +120,28 @@ to: process.env.NFTMARKETC,
 gasPrice: GasP,
 data: market.methods.makeNft(req.body.contract_pay,req.body.contract_sell,4,req.body.price).encodeABI()
 }
+//CASE IS TOKEN
+}else{
+
+//APPROVE OBJ
+approve_obj=
+{
+from: process.env.MAIN,
+to: req.body.contract_sell,
+gasPrice: GasP,
+data: contract_sell.methods.approve(process.env.NFTMARKETC,10).encodeABI()
+}
+
+//APPROVE OBJ
+market_obj=
+{
+from: process.env.MAIN,
+to: process.env.NFTMARKETC,
+gasPrice: GasP,
+data: market.methods.makeToken(req.body.contract_pay,req.body.contract_sell,req.body.price,5).encodeABI()
+}
+
+}
 
 
 //MAKE GAS ESTIMATION WITH THIS
@@ -143,6 +152,7 @@ web3.eth.estimateGas(approve_obj)
 //ESTIMATE THE GAS FOR THE EXPOSE ITSELF
 web3.eth.estimateGas(market_obj)
 .then(async gas_expose=>{
+
 /* GET THE CURRENT BALANCE OF THE ACCOUNT WE ARE SENDING THE FUNDS WHICH IS THE RESIDUE */
 var residue = await web3.eth.getBalance(user[0].public_address);
 //THE TRANSFER TO THE USER ACCOUNT SO HE CAN APPROVE THE USE OF HIS NFT
@@ -171,7 +181,10 @@ web3.eth.sendSignedTransaction(signedDoc.rawTransaction)
 //THE RECEIPT
 .then(async receipt_transaction=>{
 
+var approve;
 
+//CASE IS NFT
+if(req.body.type=="nft"){
 //THE APPROVAL
 approve=
 {
@@ -179,6 +192,18 @@ approve=
     to: process.env.NFTC,
     gasPrice: GasP,
     data: contract_sell.methods.approve(process.env.NFTMARKETC,req.body.id).encodeABI()
+}
+
+}else{
+//APPROVE OBJ
+approve=
+{
+from: user[0].public_address,
+to: req.body.contract_sell,
+gasPrice: GasP,
+data: contract_sell.methods.approve(process.env.NFTMARKETC,req.body.quantity).encodeABI()
+}
+
 }
 
 //GAS TO APPROVE
@@ -193,9 +218,12 @@ web3.eth.accounts.signTransaction(approve,user[0].private_key)
 web3.eth.sendSignedTransaction(signedDocAp.rawTransaction)
 //SENDING THE SIGNED DOC
 .then(receipt_approval=>{
+//VAR MARKET
+var market_trans;
 //SENDING NOW THE NFT FOR THE SMART CONTRACT FOR SELL
+if(req.body.type=="nft"){
 //MARKET OBJ
-market=
+market_trans=
 {
 from: user[0].public_address,
 to: process.env.NFTMARKETC,
@@ -203,9 +231,22 @@ gasPrice: GasP,
 gas: gas_expose,
 data: market.methods.makeNft(req.body.contract_pay,req.body.contract_sell,req.body.id,req.body.price).encodeABI()
 }
+//CASE IS TOKEN
+}else{
+
+//APPROVE OBJ
+market_trans=
+{
+from: user[0].public_address,
+to: process.env.NFTMARKETC,
+gasPrice: GasP,
+data: market.methods.makeToken(req.body.contract_pay,req.body.contract_sell,req.body.price,req.body.quantity).encodeABI()
+}
+
+}
 
 //SIGN THE DOC
-web3.eth.accounts.signTransaction(market,user[0].private_key)
+web3.eth.accounts.signTransaction(market_trans,user[0].private_key)
 //RESULT FROM SIGNING THE DOC
 .then(signedDoc_expose=>{
 
@@ -244,11 +285,6 @@ res.status(500).json({msg:"Error signing the doc to expose "+err});
     //RESPONSE
     res.status(500).json({msg: "Error signing the doc for the approval "+err});
 })
-
-
-
-
-
 
 
 })
