@@ -1,25 +1,18 @@
-//REQUIRE EXPRESS
+//GET EXPRESS
 const express = require('express');
-//GET THE ROUTER
+//GET ROUTER
 const router = express.Router();
-//GET THE MARKET FUNCTIONS
-const {createSale,getSales,buy} = require('../controllers/market.js');
+//GET THE METHODS
+const {MarketPost, items_list} = require('../controllers/Market');
+//MAKE AN POST OF AN SALE
+router.post("/Market",MarketPost);
+//THE GET OF THE ITEMS
+router.get('/Market',items_list);
 
 
-/* ============================================================ */
-// POST ROUTES
-/* ============================================================ */
-router.post('/market',createSale);
 
-/* ============================================================ */
-// GET ROUTES
-/* ============================================================ */
-router.get('/market',getSales);
 
-/* ============================================================ */
-// PUT ROUTES
-/* ============================================================ */
-router.put('/market',buy);
+
 
 //EXPORT IT
 module.exports=router;
